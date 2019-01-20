@@ -12,6 +12,7 @@ extern "C" {
 #include <libavcodec/avcodec.h>
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
 
 
 #define J4A_LOG_TAG "J4A"
@@ -93,9 +94,9 @@ JNIEXPORT jboolean JNICALL Java_ican_ytx_com_h265decode_H265Decoder_decode(JNIEn
     int y_size;
 
     enum AVCodecID codec_id=AV_CODEC_ID_HEVC;
-    char filepath_in[]="/storage/emulated/0/cuc_ieschool_640x360.h265";
+    char filepath_in[]="/sdcard/Android/480x270.h265";
 
-    char filepath_out[]="/storage/emulated/0/cuc_ieschool_640x360_out.yuv";
+    char filepath_out[]="/sdcard/Android/decoder.yuv";
     int first_time=1;
 
 
@@ -270,12 +271,12 @@ JNIEXPORT jboolean JNICALL Java_ican_ytx_com_h265decode_H265Decoder_encode(JNIEn
     //int frame_num=50;
     int frame_num=0;
     int csp=X265_CSP_I420;
-    int width=640,height=360;
+    int width=480,height=270;
 
-    fp_src=fopen("/storage/emulated/0/cuc_ieschool_640x360_yuv420p.yuv","rb");
+    fp_src=fopen("/sdcard/Android/480x270.yuv","rb");
     //fp_src=fopen("../cuc_ieschool_640x360_yuv444p.yuv","rb");
 
-    fp_dst=fopen("/storage/emulated/0/cuc_ieschool_640x360.h265","wb");
+    fp_dst=fopen("/sdcard/Android/480x270.h265","wb");
     //Check
     if(fp_src==NULL||fp_dst==NULL){
         return -1;
@@ -283,11 +284,12 @@ JNIEXPORT jboolean JNICALL Java_ican_ytx_com_h265decode_H265Decoder_encode(JNIEn
 
     pParam=x265_param_alloc();
     x265_param_default(pParam);
+    x265_param_default_preset(pParam,"ultrafast","zerolatency");
     pParam->bRepeatHeaders=1;//write sps,pps before keyframe
     pParam->internalCsp=csp;
     pParam->sourceWidth=width;
     pParam->sourceHeight=height;
-    pParam->fpsNum=25;
+    pParam->fpsNum=24;
     pParam->fpsDenom=1;
     //Init
     pHandle=x265_encoder_open(pParam);
@@ -338,6 +340,8 @@ JNIEXPORT jboolean JNICALL Java_ican_ytx_com_h265decode_H265Decoder_encode(JNIEn
     }
 
     //Loop to Encode
+    time_t start,end;
+    time(&start);
     for( i=0;i<frame_num;i++){
         switch(csp){
             case X265_CSP_I444:{
@@ -355,8 +359,9 @@ JNIEXPORT jboolean JNICALL Java_ican_ytx_com_h265decode_H265Decoder_encode(JNIEn
                 return -1;}
         }
 
+        time(&end);
         ret=x265_encoder_encode(pHandle,&pNals,&iNal,pPic_in,NULL);
-        J4A_ALOGD("Succeed encode %5d frames\n",i);
+        J4A_ALOGD("%d : Succeed encode %5d frames\n",end-start,i);
 
         for(j=0;j<iNal;j++){
             fwrite(pNals[j].payload,1,pNals[j].sizeBytes,fp_dst);
